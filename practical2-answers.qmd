@@ -1,0 +1,201 @@
+---
+title: "Practical 2 Answers"
+subtitle: "Working with Data: Data Sources and Data Manipulation"
+author: "Your Name Here"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    code-fold: false
+    link-external-newwindow: true
+    link-external-icon: true
+editor: source
+---
+
+<!--
+Before you start:
+
+- Make sure this file lives in the root of your project repository, alongside
+  a `data/` folder containing:
+    - reg-nurses-dataworld-1998-2020.csv
+    - nurse-licenses-ncsbn-2026-01-05.csv
+  (see the practical instructions for the download links).
+- See the README.md in this repository for package installation instructions
+  and Git/GitHub tips.
+- Render this document with the "Render" button in RStudio, or by running
+  quarto::quarto_render("practical2-answers.qmd") in the R console.
+-->
+
+## Getting started
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+
+# Load the packages you need for this practical.
+# See the README for installation instructions if any of these are missing.
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tibble)
+library(tidyr)
+```
+
+## US State Nurse Data
+
+### Question 1
+
+Download the `.csv` file and use `readr::read_csv()` to read the dataset into R.
+
+```{r}
+#| label: read-data
+
+# nurses <- read_csv("data/reg-nurses-dataworld-1998-2020.csv")
+```
+
+### Question 2
+
+Check the format of the data. Is it in a tidy format? Are there cleaning/tidying manipulations to do?
+
+```{r}
+#| label: inspect-data
+
+```
+
+
+
+
+## Data Manipulation and Visualisation
+
+### Question 3
+
+Summarise the data available in the dataset. What years/states/variables are present?
+
+```{r}
+#| label: summarise-data
+
+```
+
+
+
+
+### Question 4
+
+Using `dplyr::filter()` and `ggplot()`, recreate the plot from the 'Getting Started' section of the practical brief.
+
+```{r}
+#| label: recreate-plot
+
+```
+
+### Question 5
+
+Create a new plot to visualise some other information (of your choice) from the dataset.
+
+```{r}
+#| label: own-plot
+
+```
+
+
+
+
+## Adding additional data
+
+### Question 6
+
+Read in the additional dataset from the National Council of State Boards of Nursing.
+
+```{r}
+#| label: read-additional-data
+
+# nurse_licenses <- read_csv("data/nurse-licenses-ncsbn-2026-01-05.csv")
+```
+
+### Question 7
+
+Summarise the data available in this new dataset. What years/states/variables are present?
+
+```{r}
+#| label: summarise-additional-data
+
+```
+
+
+
+
+### Question 8
+
+What data is overlapping between this new dataset and the original one? Think about the temporal overlap and which types of nurses are present in each dataset.
+
+
+
+
+### Question 9
+
+If it is appropriate, create a combined dataset using both sources of information. If not appropriate, explain why.
+
+```{r}
+#| label: combine-data
+
+```
+
+
+
+
+### Question 10
+
+Create a visualisation (of your choice) from the new or combined dataset.
+
+```{r}
+#| label: plot-new-or-combined
+
+```
+
+## Merging additional data
+
+### Question 11
+
+Filter the `reg-nurses-dataworld-1998-2020` data to only include 2017.
+
+```{r}
+#| label: filter-2017
+
+```
+
+### Question 12
+
+Load the `us_rent_income` data located in the `tidyr` package.
+
+```{r}
+#| label: load-rent-income
+
+# data(us_rent_income, package = "tidyr")
+```
+
+### Question 13
+
+How would it be possible to merge the two datasets?
+
+
+
+
+### Question 14
+
+Merge the two datasets using `dplyr::full_join()`.
+
+```{r}
+#| label: merge-rent-nurses
+
+```
+
+### Question 15
+
+Visualise the relationship between rent and nurse wages in 2017 using the combined data.
+
+```{r}
+#| label: plot-rent-vs-wages
+
+```

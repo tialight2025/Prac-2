@@ -1,7 +1,7 @@
 ---
 title: "Practical 2 Answers"
 subtitle: "Working with Data: Data Sources and Data Manipulation"
-author: "Your Name Here"
+author: "Tia Light"
 date: today
 format:
   html:
@@ -52,7 +52,7 @@ Download the `.csv` file and use `readr::read_csv()` to read the dataset into R.
 ```{r}
 #| label: read-data
 
-# nurses <- read_csv("data/reg-nurses-dataworld-1998-2020.csv")
+nurses <- read_csv("data/reg-nurses-dataworld-1998-2020.csv")
 ```
 
 ### Question 2
@@ -61,6 +61,47 @@ Check the format of the data. Is it in a tidy format? Are there cleaning/tidying
 
 ```{r}
 #| label: inspect-data
+
+glimpse(nurses)
+
+names(nurses)
+
+# How much of each column is missing, and does the missingness cluster by
+# year or by state?
+nurses |>
+  summarise(across(everything(), ~ mean(is.na(.)))) |>
+  glimpse()
+
+nurses |> filter(is.na(`Location Quotient`)) |> count(Year)
+
+nurses |> filter(is.na(`Total Employed RN`)) |> select(State, Year)
+
+
+nurses <- nurses |>
+  rename(
+    total_employed        = `Total Employed RN`,
+    employed_se_pct       = `Employed Standard Error (%)`,
+    hourly_wage_avg       = `Hourly Wage Avg`,
+    hourly_wage_median    = `Hourly Wage Median`,
+    annual_salary_avg     = `Annual Salary Avg`,
+    annual_salary_median  = `Annual Salary Median`,
+    wage_se_pct           = `Wage/Salary standard error (%)`,
+    hourly_p10            = `Hourly 10th Percentile`,
+    hourly_p25            = `Hourly 25th Percentile`,
+    hourly_p75            = `Hourly 75th Percentile`,
+    hourly_p90            = `Hourly 90th Percentile`,
+    annual_p10            = `Annual 10th Percentile`,
+    annual_p25            = `Annual 25th Percentile`,
+    annual_p75            = `Annual 75th Percentile`,
+    annual_p90            = `Annual 90th Percentile`,
+    location_quotient     = `Location Quotient`,
+    national_total_employed          = `Total Employed (National)_Aggregate`,
+    national_healthcare_employed     = `Total Employed (Healthcare, National)_Aggregate`,
+    state_healthcare_employed        = `Total Employed (Healthcare, State)_Aggregate`,
+    state_total_employed              = `Yearly Total Employed (State)_Aggregate`
+  )
+
+nurses
 
 ```
 
@@ -76,6 +117,30 @@ Summarise the data available in the dataset. What years/states/variables are pre
 ```{r}
 #| label: summarise-data
 
+# column names
+names(nurses)
+
+# years of data
+nurses |> summarise(min_year = min(Year),
+                    max_year = max(Year),
+                    n_years = n_distinct(Year),
+                    n_states = n_distinct(State))
+
+# check for each state (does each state have the same years?)
+nurses |> 
+  group_by(State) |>
+  summarise(min_year = min(Year),
+            max_year = max(Year),
+            n_years = n_distinct(Year),
+            n_rows = n())
+
+# state names
+state_names <- nurses |> pull(State) |> unique() |> sort()
+state_names
+
+# is Year x State a unique identified for the rows of the data?
+nurses |> summarise(n_distinct(Year,State)) |> pull() == 54*23
+
 ```
 
 
@@ -88,6 +153,13 @@ Using `dplyr::filter()` and `ggplot()`, recreate the plot from the 'Getting Star
 ```{r}
 #| label: recreate-plot
 
+ nurses |> filter(State %in% c('California', 'North Carolina', 'New York', 'Alabama')) |>
+  ggplot() +
+  geom_line(aes(y = hourly_wage_median, x = Year, colour = State)) +
+  paletteer::scale_colour_paletteer_d("colorBlindness::paletteMartin") +
+  scale_y_continuous("Hourly Wage Median") +
+  theme_bw()
+
 ```
 
 ### Question 5
@@ -96,7 +168,17 @@ Create a new plot to visualise some other information (of your choice) from the 
 
 ```{r}
 #| label: own-plot
-
+# How does pay vary across states in the most recent year available?
+nurses |>
+  filter(Year == max(Year), !is.na(annual_salary_median)) |>
+  mutate(State = reorder(State, annual_salary_median)) |>
+  ggplot(aes(x = annual_salary_median, y = State)) +
+  geom_point() +
+  scale_x_continuous("Median annual RN salary (US$)", labels = scales::label_dollar()) +
+  ylab(NULL) +
+  ggtitle("Median RN salary by state, 2020") +
+  theme_bw() +
+  theme(axis.text.y = element_text(size = 6))
 ```
 
 
@@ -111,7 +193,7 @@ Read in the additional dataset from the National Council of State Boards of Nurs
 ```{r}
 #| label: read-additional-data
 
-# nurse_licenses <- read_csv("data/nurse-licenses-ncsbn-2026-01-05.csv")
+nurse_licenses <- read_csv("data/nurse-licenses-ncsbn-2026-01-05.csv")
 ```
 
 ### Question 7
@@ -121,6 +203,28 @@ Summarise the data available in this new dataset. What years/states/variables ar
 ```{r}
 #| label: summarise-additional-data
 
+nrow(nurse_licenses) # not 54, why?
+
+nurse_licenses$Jurisdiction
+
+nurse_licenses |> filter(grepl("-", Jurisdiction))
+
+nurse_licenses_clean <- nurse_licenses |>
+  # split Jurisdiction column on "-" character
+  separate_wider_delim(Jurisdiction, delim = "-", names = c("State","Nurse"), too_few = "align_start") |>
+  # replace NAs with "All"
+  mutate(Nurse = ifelse(is.na(Nurse), "All", Nurse)) |> 
+  # change state name to lower case
+  mutate(state_lwc = stringr::str_to_lower(State)) |>
+  # remove State column
+  select(-State)
+
+# sum up states that have "split" records of nurses i.e. RN + PN + VN
+nurse_licenses_all <- nurse_licenses_clean |> 
+  group_by(state_lwc) |>
+  summarise(licenses_2026 = sum(Number))
+
+nurse_licenses_all
 ```
 
 
@@ -130,7 +234,13 @@ Summarise the data available in this new dataset. What years/states/variables ar
 
 What data is overlapping between this new dataset and the original one? Think about the temporal overlap and which types of nurses are present in each dataset.
 
+Temporal overlap: none. nurses runs 1998–2020. The nurse_licenses data is a snapshot from January 2026 (that Josh downloaded). This is six years after the other dataset ends, and a single moment in time rather than a year. There is no year we can match exactly between the two.
 
+Conceptual overlap: partial, and not a clean match. The two datasets measure different things:
+
+nurses (Total Employed RN) is BLS OES employment data: an estimate of how many RNs were actively working in a state that year, from surveying employers.
+nurse_licenses (Number) is NCSBN licensure data: a count of active licenses held, from state licensing boards. A license count will generally be higher than employment (retired-but-licensed, between jobs, working out of state on a compact license, etc.). We also summed the types of nurse registration PN + VN + RN.
+Geographically the overlap is better: both datasets use full state/ territory names (nurses in Title Case, nurse_licenses in ALL CAPS, so case-normalisation is needed), and both include some of the same territories, though nurse_licenses additionally includes American Samoa and the Northern Mariana Islands, which nurses doesn’t have at all.
 
 
 ### Question 9
@@ -139,6 +249,20 @@ If it is appropriate, create a combined dataset using both sources of informatio
 
 ```{r}
 #| label: combine-data
+
+## Given the mismatches above, a direct, literal merge would be misleading: there’s no shared year to join on, and naively joining on state name alone would implicitly compare 2020 employment against a 2026 license count as if they were the same point in time and the same population of nurses. We don’t think that’s appropriate to present as a genuine “combined dataset” without heavy caveats.
+
+## What is reasonable is a clearly-labelled data comparison — e.g. “how does the most recent employment figure we have compare to the most recent license count we have” — as long as we’re explicit that the two numbers are years apart and measure different underlying populations. We do this below.
+
+employed_nurses_2020 <- nurses |>
+  filter(Year == 2020) |>
+  select(State, total_employed) |>
+  rename(employed_2020 = total_employed) |> 
+  mutate(state_lwc = stringr::str_to_lower(State))
+
+employed_vs_licenses <- employed_nurses_2020 |>
+  inner_join(nurse_licenses_all, by = "state_lwc") |>
+  select(-state_lwc) 
 
 ```
 
@@ -152,6 +276,10 @@ Create a visualisation (of your choice) from the new or combined dataset.
 ```{r}
 #| label: plot-new-or-combined
 
+ggplot(employed_vs_licenses, aes(x = employed_2020, y = licenses_2026)) + 
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  theme_bw()
 ```
 
 ## Merging additional data
@@ -163,6 +291,10 @@ Filter the `reg-nurses-dataworld-1998-2020` data to only include 2017.
 ```{r}
 #| label: filter-2017
 
+nurses_2017 <- nurses |>
+  filter(Year == 2017)
+
+nurses_2017
 ```
 
 ### Question 12
@@ -172,13 +304,24 @@ Load the `us_rent_income` data located in the `tidyr` package.
 ```{r}
 #| label: load-rent-income
 
-# data(us_rent_income, package = "tidyr")
+data(us_rent_income, package = "tidyr")
+us_rent_income
+
 ```
 
 ### Question 13
 
 How would it be possible to merge the two datasets?
 
+How would it be possible to merge the two datasets?
+
+us_rent_income is in long format: for each state NAME (or GEOID) there are two rows, one with variable == "income" and one with variable == "rent", each with an estimate and a margin of error (moe) — 104 rows in total (52 states/territories x 2 variables). To join it to nurses_2017 (one row per state) by state, we either need to
+
+pivot it wider so that income and rent each become their own column (one row per state) … otherwise a join would duplicate every nurses_2017 row once for income and once for rent.
+
+Filter down to income or rent (assuming we are only interested in one).
+
+We will use the first option.
 
 
 
@@ -189,6 +332,14 @@ Merge the two datasets using `dplyr::full_join()`.
 ```{r}
 #| label: merge-rent-nurses
 
+us_rent_income_wide <- us_rent_income |>
+  select(-moe) |>
+  pivot_wider(names_from = variable, values_from = estimate)
+
+rent_nurses_2017 <- full_join(nurses_2017, us_rent_income_wide, by = c("State" = "NAME"))
+
+rent_nurses_2017
+
 ```
 
 ### Question 15
@@ -197,5 +348,17 @@ Visualise the relationship between rent and nurse wages in 2017 using the combin
 
 ```{r}
 #| label: plot-rent-vs-wages
+
+rent_nurses_2017 |>
+  filter(!is.na(rent), !is.na(annual_salary_median)) |>
+  ggplot(aes(x = rent, y = annual_salary_median)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  ggrepel::geom_text_repel(aes(label = State), size = 2.5) +
+  scale_x_continuous("Median monthly rent (US$)", labels = scales::label_dollar()) +
+  scale_y_continuous("Median annual RN salary (US$)", labels = scales::label_dollar()) +
+  ggtitle("RN salary vs. median rent by state, 2017") +
+  theme_bw()
+
 
 ```
